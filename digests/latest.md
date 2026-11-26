@@ -1,82 +1,88 @@
-# HighLevel digest, 2026-08-26
+# HighLevel digest, 2026-11-26
 
-Covers entries dated Aug 23 through Aug 26 2026. Source: HighLevel's official changelog at
-ideas.gohighlevel.com/changelog.
+Fetched: 2026-11-26T22:24:20Z
 
-Coverage gap: Aug 19 through Aug 22 was not retrieved in this sweep and is not reported here.
+Covers entries dated 2026-11-24 through 2026-11-26. Source: HighLevel's official changelog at ideas.gohighlevel.com/changelog.
 
-5 HIGH, 4 MEDIUM, 2 LOW.
+Coverage gap: the feed's oldest entry (2026-11-24) is newer than the previous digest's newest entry (2026-08-26), so entries between those dates may have been missed and are not reported here.
+
+0 HIGH, 0 MEDIUM, 0 LOW, 10 UNTIERED.
 
 ---
 
 ## HIGH
 
-### Anthropic and Google models now run in the AI Agent workflow action
-The AI Agent workflow action was OpenAI only. It now also runs Claude Opus 5, Sonnet 5, and
-Haiku 4.5, plus Gemini 3.6 Flash and 3.1 Pro Preview, with per-model reasoning-effort control.
-**What to do:** if any workflow of yours routes out to an external AI service just to use a
-specific model, that hop can now happen inside the workflow.
-Date unconfirmed in this sweep.
-
-### Numeric and monetary custom fields became reporting metrics
-Custom fields on Contacts and Opportunities can now be aggregated with Sum, Min, Max, and
-Average in dashboards and custom reports. New fields appear in the metric picker automatically.
-**What to do:** any number you currently export to a spreadsheet to total up can probably become
-a dashboard widget instead. Check your monetary custom fields first.
-Aug 23 2026.
-
-### Chat widget compliance notice and consent settings split apart
-The single all-in-one compliance toggle is replaced by a compliance notice that shows without
-requiring visitor action, plus a separate consent checkbox with wording you control, for
-explicit SMS or email opt-in.
-**What to do:** if you send SMS, this is the cleanest place to capture written consent. Set the
-checkbox wording deliberately rather than leaving the default.
-Aug 25 2026.
-
-### One calendar can offer up to three meeting durations
-Bookers choose their meeting length inside a single calendar instead of you maintaining a
-separate calendar per duration.
-**What to do:** if you run separate calendars for a short intro call and a longer strategy call,
-those can collapse into one.
-Aug 25 2026.
-
-### Bulk workflow triggering for Companies and custom objects
-Select multiple Company or custom-object records from a list view and push them all into a
-workflow at once, with progress tracked under Bulk Actions.
-**What to do:** custom objects that were storage-only can now drive automation without building
-a record-by-record trigger.
-Aug 26 2026.
+None. Entries are not tiered automatically.
 
 ## MEDIUM
 
-### Zero-dollar checkout in Forms and Surveys
-Forms and surveys skip card collection when the order total is zero. Useful for any free offer
-that currently asks for a card it does not need.
-Aug 24 2026.
-
-### Chat widget pulls from Brand Boards
-The widget's Styles panel reads brand colors and fonts from the location's Brand Board instead
-of needing manual entry.
-Aug 25 2026.
-
-### Marketplace app approval controls
-Agencies can restrict sub-account access to approved apps only, through one toggle.
-Aug 26 2026.
-
-### Calendar guest enhancements
-Guest records can collect phone numbers, and new guest contacts inherit the primary contact's
-timezone, which removes a common wrong-timezone booking failure.
-Aug 26 2026.
+None. Entries are not tiered automatically.
 
 ## LOW
 
-### Request contact info from WhatsApp username users
-A share-contact-info button converts anonymous WhatsApp username users into contactable records.
-Aug 25 2026.
+None. Entries are not tiered automatically.
 
-### WhatsApp template builder validates variables inline
-Invalid variable placeholders are caught before save instead of on rejection.
-Aug 25 2026.
+## UNTIERED
+
+### Meeting Room: HIPAA Compliance and Top Bar Quick Actions
+Meeting Rooms is now HIPAA compliant, helping healthcare teams run their meetings with confidence. ✨ Quick Actions in the Top Bar Start recording with confirmation : Click Record, then Start recording. Recording no longer starts immediately. Stop recording from the top bar ...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/meeting-room-hipaa-compliance-and-top-bar-quick-actions
+2026-11-26.
+
+### 🧩 Introducing Website Widgets for Restaurants! [Founder's Plan Exclusive]
+Bring table booking, online ordering, your menu and your hours to the website your restaurant already has! 🚀 Website widgets work on any website, like AI Studio, GHL Funnels, WordPress, Wix or Squarespace. Guests book a table right on your page, without ever leaving it. ✨ What's...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/introducing-website-widgets-for-restaurants-founders-plan-exclusive
+2026-11-26.
+
+### 🌐 Smarter Web Research in Managed Agents - More Accurate, Faster & Reliable!
+Managed Agents can now research entire websites, read documents, and deliver more accurate answers with verifiable sources! 🚀 We've enhanced web research capabilities to help agents find reliable information, analyze multiple sources, and complete complex research tasks more...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/smarter-web-research-in-managed-agents-more-accurate-faster-reliable
+2026-11-26.
+
+### ⏰ Introducing Meeting Triggers in Managed Agents!
+Automate meeting preparation and follow-ups with Managed Agents! 🚀 Managed Agents can now automatically execute tasks before a meeting starts or after it ends, helping you stay prepared and never miss an important follow-up. ✨ What's New? 📅 Meeting Starting Soon Trigger agents 5...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/introducing-meeting-triggers-in-managed-agents
+2026-11-25.
+
+### Conversation AI now sleeps when your team replies from outside HighLevel
+When your team replies to a contact from outside HighLevel, for example from Meta Business Suite, the reply now puts your Conversation AI bot to sleep, the same as a reply sent from HighLevel. What's New Replies sent outside HighLevel now count. When a team member replies from...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/conversation-ai-now-sleeps-when-your-team-replies-from-outside-highlevel
+2026-11-25.
+
+### 💬 Introducing Suggested Replies in Managed Agents Chat!
+Continue conversations faster with smart, AI-powered reply suggestions! 🚀 Managed Agents now automatically suggest relevant follow-up messages after each response, helping you take the next step without typing everything from scratch. ✨ What's New? 🤖 Smart Reply Suggestions Get...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/introducing-suggested-replies-in-managed-agents-chat
+2026-11-25.
+
+### Show all your events on one page in funnels and websites
+You no longer need to edit your website by hand every time you add an event. Events now has its own elements in the funnel and website builder, so a single page can list all your published events. One element, three pages. Search "Events" in the builder's Quick Add, drop it on a...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/show-all-your-events-on-one-page-in-funnels-and-websites
+2026-11-25.
+
+### Workflows: Populate Date-Time Contact Fields with Dynamic Values
+You can now populate Date-Time contact custom fields with dynamic values in Update Contact Field and Create Contact . Use timestamps, values from other date fields, or outputs from Format Date and Time instead of entering a fixed date and time. What’s improved? Choose Standard...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/workflows-populate-date-time-contact-fields-with-dynamic-values
+2026-11-24.
+
+### Custom Date Reminders: Access opportunity details natively, no Find Opportunity needed
+You can now use opportunity details directly in workflows triggered by a Custom Date Reminder on an opportunity date field. Use values such as {{opportunity.name}} without adding a Find Opportunity action to retrieve the opportunity that triggered the reminder. What’s improved?...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/custom-date-reminders-access-opportunity-details-natively-no-find-opportunity-ne
+2026-11-24.
+
+### Credential Analytics: See how your certificates and badges perform
+See which certificates and badges your members earn, download, and share, all from one new Analytics page under Credentials. 🎉 Until now you could issue certificates & badges but couldn't easily tell if anyone was using them. Credential Analytics fixes that. What's new?...
+**What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
+Link: https://ideas.gohighlevel.com/changelog/credential-analytics-see-how-your-certificates-and-badges-perform
+2026-11-24.
 
 ---
 
