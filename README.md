@@ -19,6 +19,15 @@ https://raw.githubusercontent.com/justinbamfdev/bamf-signal/main/digests/latest.
 
 No credential, no connector, no expiry. It returns plain text to anything that can fetch a URL.
 
+## Automated refresh
+
+`.github/workflows/digest-refresh.yml` rewrites `digests/latest.md` on weekdays at 11:40 UTC
+(04:40 MST, 05:40 during daylight saving time) and on manual `workflow_dispatch`. It reads
+HighLevel's public changelog feed, lists entries newest first without tiers, and commits with the
+built-in `GITHUB_TOKEN` even when nothing is new, because the `Fetched:` line changes. The job
+fails if the newest entry is more than 2 weekdays old. Run the parser tests locally with
+`python3 -m unittest discover -s tests`.
+
 ## What the tiers mean
 
 - **HIGH** - changes a build pattern, replaces or deprecates something, or is a new capability

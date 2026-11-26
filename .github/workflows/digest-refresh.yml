@@ -1,0 +1,54 @@
+name: digest-refresh
+
+on:
+  schedule:
+    # 04:40 America/Denver on weekdays. 11:40 UTC equals 04:40 MST (UTC-7).
+    # GitHub cron is UTC only, so during daylight saving time (MDT, UTC-6)
+    # this fires at 05:40 local. Adjust to "40 10 * * 1-5" if exact local time matters.
+    - cron: "40 11 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: digest-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Run parser tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Rebuild digests/latest.md
+        id: build
+        run: python scripts/digest_refresh.py
+
+      # Commit even when no entries are new: the Fetched line always changes,
+      # and a commit every run keeps the scheduled workflow from being disabled.
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add digests/latest.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "digest: refresh latest.md (automated)"
+            git push
+          fi
+
+      - name: Fail if newest entry is stale
+        if: steps.build.outputs.stale == 'true'
+        run: |
+          echo "Newest changelog entry (${{ steps.build.outputs.newest }}) is more than 2 weekdays old." >&2
+          exit 1
