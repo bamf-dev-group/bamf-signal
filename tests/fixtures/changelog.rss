@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>HighLevel Changelog</title>
+    <link>https://ideas.gohighlevel.com/changelog</link>
+    <item>
+      <title>Older &amp; simpler update</title>
+      <link>https://ideas.gohighlevel.com/changelog/older-update</link>
+      <pubDate>Mon, 17 Nov 2026 15:00:00 GMT</pubDate>
+      <description>&lt;p&gt;Plain &lt;b&gt;older&lt;/b&gt; summary.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Newest feature - now live</title>
+      <link>https://ideas.gohighlevel.com/changelog/newest-feature</link>
+      <pubDate>Wed, 19 Nov 2026 09:30:00 GMT</pubDate>
+      <description>&lt;p&gt;First line.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Second point&lt;/li&gt;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>No summary entry</title>
+      <link>https://ideas.gohighlevel.com/changelog/no-summary</link>
+      <pubDate>Tue, 18 Nov 2026 12:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Undated entry is skipped</title>
+      <link>https://ideas.gohighlevel.com/changelog/undated</link>
+    </item>
+  </channel>
+</rss>

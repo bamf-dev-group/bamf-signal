@@ -19,6 +19,24 @@ https://raw.githubusercontent.com/justinbamfdev/bamf-signal/main/digests/latest.
 
 No credential, no connector, no expiry. It returns plain text to anything that can fetch a URL.
 
+## Automated refresh
+
+`.github/workflows/digest-refresh.yml` rewrites `digests/latest.md` on weekdays at 11:40 UTC
+(04:40 MST, 05:40 during daylight saving time) and on manual `workflow_dispatch`, which has a
+`dry_run` input that builds the file and shows the diff without committing. It reads HighLevel's
+public changelog feed and keeps the same layout as the hand-curated digest: title, `Fetched:`,
+`Covers entries dated`, a computed `Coverage gap:` line, tier counts, HIGH, MEDIUM and LOW
+sections, an UNTIERED section holding the automated entries, and the `Not shipped` section, which
+is carried forward unchanged from the previous file.
+
+It commits with the built-in `GITHUB_TOKEN` even when nothing is new, because the `Fetched:` line
+changes. If the newest entry is more than 2 weekdays old, the title keeps the newest entry date
+instead of today, a `STALE:` line is added, and the job fails. Any failure opens or updates an
+issue titled "digest-refresh failure", which is closed on the next good run.
+
+Run the parser tests locally with `python3 -m unittest discover -s tests`. The same tests run on
+every pull request via `.github/workflows/test.yml`.
+
 ## What the tiers mean
 
 - **HIGH** - changes a build pattern, replaces or deprecates something, or is a new capability
