@@ -7,7 +7,6 @@ import argparse
 import datetime as dt
 import email.utils
 import html
-import json
 import os
 import re
 import sys
@@ -16,8 +15,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 FEED_URL = "https://ideas.gohighlevel.com/api/changelog/feed.rss"
-ENTRIES_URL = "https://ideas.gohighlevel.com/api/changelog/getEntries"
-ENTRIES_BODY = {"pages": 1, "status": ["published"]}
 SOURCE_LABEL = "ideas.gohighlevel.com/changelog"
 SUMMARY_MAX = 280
 MAX_STALE_WEEKDAYS = 2
@@ -87,43 +84,6 @@ def parse_rss(xml_text):
     return entries
 
 
-def _find_entry_list(payload):
-    if isinstance(payload, list):
-        return [x for x in payload if isinstance(x, dict)]
-    if isinstance(payload, dict):
-        for key in ("entries", "data", "changelogs", "results", "items"):
-            found = _find_entry_list(payload.get(key))
-            if found:
-                return found
-    return []
-
-
-def _norm(title):
-    return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
-
-
-def enrich(entries, payload):
-    """Fill empty summaries from getEntries output, matching by title.
-
-    The response shape is not documented, so this is best effort and
-    never removes or reorders feed entries.
-    """
-    by_title = {}
-    for raw in _find_entry_list(payload):
-        title = raw.get("title") or raw.get("name") or ""
-        body = ""
-        for key in ("summary", "description", "excerpt", "content", "body"):
-            if isinstance(raw.get(key), str) and raw[key].strip():
-                body = raw[key]
-                break
-        if title and body:
-            by_title[_norm(clean_text(title))] = shorten(clean_text(body))
-    for entry in entries:
-        if not entry["summary"]:
-            entry["summary"] = by_title.get(_norm(entry["title"]), "")
-    return entries
-
-
 def weekdays_between(start, end):
     """Count weekdays in the half open range (start, end]."""
     count = 0
@@ -145,38 +105,99 @@ def fmt_day(day):
     return day.isoformat()
 
 
-def render(entries, now):
+NOT_SHIPPED_DEFAULT = (
+    "## Not shipped, in case you heard otherwise\n\n"
+    "Nothing recorded in this sweep.\n"
+)
+NOT_SHIPPED_RE = re.compile(r"^## Not shipped.*\Z", re.M | re.S)
+COVERS_ISO_RE = re.compile(r"Covers entries dated \d{4}-\d{2}-\d{2} through (\d{4}-\d{2}-\d{2})")
+COVERS_LEGACY_RE = re.compile(r"Covers entries dated .*? through ([A-Z][a-z]{2}) (\d{1,2}) (\d{4})")
+WHAT_TO_DO = (
+    "**What to do:** not tiered automatically. Open the link and check whether this changes "
+    "anything live in your account before acting on it."
+)
+
+
+def previous_newest(text):
+    """Newest entry date covered by the previous digest, or None."""
+    match = COVERS_ISO_RE.search(text or "")
+    if match:
+        return dt.date.fromisoformat(match.group(1))
+    match = COVERS_LEGACY_RE.search(text or "")
+    if match:
+        try:
+            return dt.datetime.strptime(" ".join(match.groups()), "%b %d %Y").date()
+        except ValueError:
+            return None
+    return None
+
+
+def extract_not_shipped(text):
+    match = NOT_SHIPPED_RE.search(text or "")
+    return match.group(0).rstrip() + "\n" if match else NOT_SHIPPED_DEFAULT
+
+
+def coverage_gap_line(entries, prev_newest):
+    oldest = entries[-1]["date"]
+    if prev_newest is None:
+        return "Coverage gap: not computed, no previous digest on record."
+    if oldest > prev_newest:
+        return (
+            f"Coverage gap: the feed's oldest entry ({fmt_day(oldest)}) is newer than the previous "
+            f"digest's newest entry ({fmt_day(prev_newest)}), so entries between those dates may "
+            "have been missed and are not reported here."
+        )
+    return "Coverage gap: none detected."
+
+
+def render(entries, now, previous_text="", stale=None):
+    """Render the digest. When stale, the title carries the newest entry date, not today."""
     today = now.date()
     newest, oldest = entries[0]["date"], entries[-1]["date"]
+    if stale is None:
+        stale = is_stale(entries, today)
+    title_date = newest if stale else today
     lines = [
-        f"# HighLevel digest, {fmt_day(today)}",
+        f"# HighLevel digest, {fmt_day(title_date)}",
         "",
         f"Fetched: {now.strftime('%Y-%m-%dT%H:%M:%SZ')}",
         "",
-        f"Coverage: {len(entries)} entries dated {fmt_day(oldest)} through {fmt_day(newest)}. "
-        f"Source: HighLevel's official changelog at {SOURCE_LABEL}. "
-        "Entries are untiered, newest first.",
+        f"Covers entries dated {fmt_day(oldest)} through {fmt_day(newest)}. "
+        f"Source: HighLevel's official changelog at {SOURCE_LABEL}.",
+        "",
+    ]
+    if stale:
+        lines += [
+            f"STALE: the newest changelog entry ({fmt_day(newest)}) is more than "
+            f"{MAX_STALE_WEEKDAYS} weekdays older than the fetch date ({fmt_day(today)}). "
+            "Treat this digest as out of date.",
+            "",
+        ]
+    lines += [
+        coverage_gap_line(entries, previous_newest(previous_text)),
+        "",
+        f"0 HIGH, 0 MEDIUM, 0 LOW, {len(entries)} UNTIERED.",
         "",
         "---",
         "",
     ]
+    for tier in ("HIGH", "MEDIUM", "LOW"):
+        lines += [f"## {tier}", "", "None. Entries are not tiered automatically.", ""]
+    lines += ["## UNTIERED", ""]
     for entry in entries:
-        lines.append(f"## {fmt_day(entry['date'])}: {entry['title']}")
-        lines.append("")
-        if entry["link"]:
-            lines.append(f"Link: {entry['link']}")
+        lines.append(f"### {entry['title']}")
         if entry["summary"]:
             lines.append(entry["summary"])
-        lines.append("")
-    return "\n".join(lines).rstrip() + "\n"
+        lines.append(WHAT_TO_DO)
+        if entry["link"]:
+            lines.append(f"Link: {entry['link']}")
+        lines += [f"{fmt_day(entry['date'])}.", ""]
+    lines += ["---", "", extract_not_shipped(previous_text).rstrip(), ""]
+    return "\n".join(lines)
 
 
-def http(url, data=None, timeout=30):
-    headers = {"User-Agent": USER_AGENT}
-    if data is not None:
-        headers["Content-Type"] = "application/json"
-        data = json.dumps(data).encode()
-    req = urllib.request.Request(url, data=data, headers=headers)
+def http(url, timeout=30):
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
@@ -200,19 +221,33 @@ def fetch_feed(retries=1, delay=10):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default="digests/latest.md")
+    parser.add_argument("--feed-file", help="read the feed from a local file instead of the network")
+    parser.add_argument("--now", help="override the current UTC time, ISO 8601 (for tests)")
     args = parser.parse_args(argv)
 
-    entries = fetch_feed()
-    try:
-        entries = enrich(entries, json.loads(http(ENTRIES_URL, ENTRIES_BODY)))
-    except Exception as exc:
-        print(f"enrichment skipped: {exc}", file=sys.stderr)
+    if args.feed_file:
+        with open(args.feed_file, encoding="utf-8") as fh:
+            entries = parse_rss(fh.read())
+        if not entries:
+            raise SystemExit("feed contained no usable entries")
+    else:
+        entries = fetch_feed()
 
-    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
-    with open(args.output, "w", encoding="utf-8") as fh:
-        fh.write(render(entries, now))
+    if args.now:
+        now = dt.datetime.fromisoformat(args.now.replace("Z", "+00:00"))
+    else:
+        now = dt.datetime.now(dt.timezone.utc)
+    now = now.replace(microsecond=0)
+
+    previous = ""
+    if os.path.exists(args.output):
+        with open(args.output, encoding="utf-8") as fh:
+            previous = fh.read()
 
     stale = is_stale(entries, now.date())
+    with open(args.output, "w", encoding="utf-8") as fh:
+        fh.write(render(entries, now, previous, stale))
+
     newest = fmt_day(entries[0]["date"])
     print(f"wrote {args.output}: {len(entries)} entries, newest {newest}, stale={stale}")
     out = os.environ.get("GITHUB_OUTPUT")
