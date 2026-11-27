@@ -383,6 +383,102 @@ class GetEntriesTests(unittest.TestCase):
         self.assertEqual(entry["title"], "A & B")
 
 
+class SameDayRerunTests(unittest.TestCase):
+    """The backup schedule slot means a second run on the same UTC day must be safe."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.out = pathlib.Path(self.tmp.name) / "latest.md"
+        self.out.write_text(PREV_DIGEST, encoding="utf-8")
+        self.entries = busy_day_entries()
+
+    def run_once(self, now, api, entries=None):
+        entries = self.entries if entries is None else entries
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(dr, "http", return_value=busy_day_rss(entries)), mock.patch.object(
+            dr, "http_post", api
+        ), mock.patch.object(dr.time, "sleep"), redirect_stderr(stderr), mock.patch("sys.stdout", stdout):
+            dr.main(["--output", str(self.out), "--now", now])
+        return self.out.read_text(encoding="utf-8"), stdout.getvalue()
+
+    def broken(self, url, payload, timeout=30):
+        raise urllib.error.URLError("blocked")
+
+    def test_rerun_with_same_content_leaves_file_untouched(self):
+        first, _ = self.run_once("2026-11-27T11:40:05Z", FakeEntriesApi(self.entries))
+        second, printed = self.run_once("2026-11-27T17:40:09Z", FakeEntriesApi(self.entries))
+        self.assertEqual(second, first)
+        self.assertIn("Fetched: 2026-11-27T11:40:05Z", second)
+        self.assertIn("unchanged", printed)
+        self.assertIn("Coverage gap: none detected.", second)
+
+    def test_rerun_does_not_shrink_the_digest_or_open_a_false_gap(self):
+        first, _ = self.run_once("2026-11-27T11:40:05Z", FakeEntriesApi(self.entries))
+        api = FakeEntriesApi(self.entries)
+        second, _ = self.run_once("2026-11-27T17:40:09Z", api)
+        self.assertEqual(second.count("### Entry"), first.count("### Entry"))
+        self.assertIn("Covers entries dated 2026-11-26 through 2026-11-27.", second)
+        self.assertNotIn("is newer than the previous", second)
+        self.assertTrue(api.calls)
+
+    def test_rerun_with_a_new_entry_writes_once_and_keeps_older_entries(self):
+        first, _ = self.run_once("2026-11-27T11:40:05Z", FakeEntriesApi(self.entries))
+        newer = [api_entry(99, "2026-11-27T21:00:00Z")] + self.entries
+        second, printed = self.run_once("2026-11-27T21:30:00Z", FakeEntriesApi(newer), entries=newer)
+        self.assertIn("wrote", printed)
+        self.assertIn("Fetched: 2026-11-27T21:30:00Z", second)
+        self.assertEqual(second.count("### Entry"), first.count("### Entry") + 1)
+        self.assertLess(second.index("### Entry 99\n"), second.index("### Entry 0\n"))
+        self.assertIn("Coverage gap: none detected.", second)
+
+    def test_rerun_keeps_an_open_gap_when_getentries_is_still_down(self):
+        first, _ = self.run_once("2026-11-27T11:40:05Z", self.broken)
+        self.assertIn("(2026-11-26)", first)
+        second, printed = self.run_once("2026-11-27T17:40:09Z", self.broken)
+        self.assertEqual(second, first)
+        self.assertIn("unchanged", printed)
+        self.assertIn("Coverage gap: the feed's oldest entry (2026-11-27)", second)
+
+    def test_rerun_closes_an_open_gap_once_getentries_works(self):
+        self.run_once("2026-11-27T11:40:05Z", self.broken)
+        second, printed = self.run_once("2026-11-27T17:40:09Z", FakeEntriesApi(self.entries))
+        self.assertIn("wrote", printed)
+        self.assertIn("Coverage gap: none detected.", second)
+        self.assertEqual(second.count("### Entry"), 14)
+
+    def test_next_day_run_still_writes(self):
+        first, _ = self.run_once("2026-11-27T11:40:05Z", FakeEntriesApi(self.entries))
+        text, printed = self.run_once("2026-11-30T11:40:05Z", FakeEntriesApi(self.entries))
+        self.assertIn("wrote", printed)
+        self.assertTrue(text.startswith("# HighLevel digest, "))
+        self.assertIn("Fetched: 2026-11-30T11:40:05Z", text)
+
+    def test_baseline_rules(self):
+        today = dt.date(2026, 11, 27)
+        digest = (
+            "# t\n\nFetched: 2026-11-27T11:40:05Z\n\n"
+            "Covers entries dated 2026-11-26 through 2026-11-27. Source: x.\n\n"
+            "Coverage gap: none detected.\n"
+        )
+        self.assertEqual(dr.coverage_baseline(digest, today), dt.date(2026, 11, 26))
+        self.assertEqual(dr.coverage_baseline(digest, dt.date(2026, 11, 28)), dt.date(2026, 11, 27))
+        gap = digest.replace(
+            "Coverage gap: none detected.",
+            "Coverage gap: the feed's oldest entry (2026-11-27) is newer than the previous "
+            "digest's newest entry (2026-11-25), so entries may have been missed.",
+        )
+        self.assertEqual(dr.coverage_baseline(gap, today), dt.date(2026, 11, 25))
+        self.assertIsNone(dr.coverage_baseline("", today))
+
+    def test_workflow_has_primary_and_backup_slots(self):
+        text = (ROOT / ".github" / "workflows" / "digest-refresh.yml").read_text(encoding="utf-8")
+        self.assertIn('cron: "40 11 * * 1-5"', text)
+        self.assertIn('cron: "40 17 * * 1-5"', text)
+        self.assertIn("group: digest-refresh", text)
+        self.assertIn("cancel-in-progress: false", text)
+
+
 class FreshnessTests(unittest.TestCase):
     def e(self, y, m, d):
         return [{"date": dt.date(y, m, d)}]
