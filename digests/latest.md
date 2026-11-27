@@ -1,10 +1,10 @@
-# HighLevel digest, 2026-11-26
+# HighLevel digest, 2026-11-27
 
-Fetched: 2026-11-26T22:24:20Z
+Fetched: 2026-11-27T20:15:35Z
 
-Covers entries dated 2026-11-24 through 2026-11-26. Source: HighLevel's official changelog at ideas.gohighlevel.com/changelog.
+Covers entries dated 2026-11-27 through 2026-11-27. Source: HighLevel's official changelog at ideas.gohighlevel.com/changelog.
 
-Coverage gap: the feed's oldest entry (2026-11-24) is newer than the previous digest's newest entry (2026-08-26), so entries between those dates may have been missed and are not reported here.
+Coverage gap: the feed's oldest entry (2026-11-27) is newer than the previous digest's newest entry (2026-11-26), so entries between those dates may have been missed and are not reported here.
 
 0 HIGH, 0 MEDIUM, 0 LOW, 10 UNTIERED.
 
@@ -24,65 +24,65 @@ None. Entries are not tiered automatically.
 
 ## UNTIERED
 
-### Meeting Room: HIPAA Compliance and Top Bar Quick Actions
-Meeting Rooms is now HIPAA compliant, helping healthcare teams run their meetings with confidence. ✨ Quick Actions in the Top Bar Start recording with confirmation : Click Record, then Start recording. Recording no longer starts immediately. Stop recording from the top bar ...
+### 🎨 Bring Your Brand Board Fonts to Mobile Apps with Client App Builder!
+Your branded mobile apps can now look even more like your business! With Brand Board font support in Client App Builder , you can bring your brand's typography directly into your mobile apps - creating a consistent experience across your website, funnels, Client Portal, and...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/meeting-room-hipaa-compliance-and-top-bar-quick-actions
-2026-11-26.
+Link: https://ideas.gohighlevel.com/changelog/bring-your-brand-board-fonts-to-mobile-apps-with-client-app-builder
+2026-11-27.
 
-### 🧩 Introducing Website Widgets for Restaurants! [Founder's Plan Exclusive]
-Bring table booking, online ordering, your menu and your hours to the website your restaurant already has! 🚀 Website widgets work on any website, like AI Studio, GHL Funnels, WordPress, Wix or Squarespace. Guests book a table right on your page, without ever leaving it. ✨ What's...
+### 💱 Choose the Currency for Each Menu Item [Founder's Plan Exclusive]
+Price every menu item in the currency your guests pay in! 🌍 When you add an item, pick its currency right next to the price. A risotto in Europe shows €18.50, and a rendang in Indonesia shows IDR 95,000. ✨ What's New? Currency next to the price: Search by code or name, like EUR...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/introducing-website-widgets-for-restaurants-founders-plan-exclusive
-2026-11-26.
+Link: https://ideas.gohighlevel.com/changelog/choose-the-currency-for-each-menu-item-founders-plan-exclusive
+2026-11-27.
 
-### 🌐 Smarter Web Research in Managed Agents - More Accurate, Faster & Reliable!
-Managed Agents can now research entire websites, read documents, and deliver more accurate answers with verifiable sources! 🚀 We've enhanced web research capabilities to help agents find reliable information, analyze multiple sources, and complete complex research tasks more...
+### 🎛️ Modifier Groups: Set How Many Options Guests Can Choose [Founder's Plan Exclusive]
+Build-your-own thalis, bowls and combos just got easier! 🍛 Choose exactly how many options guests can pick in each modifier group, and add a short description to any option. Guests see the rule right on the item. ✨ What's New? One or More than one: Pick One for a single choice...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/smarter-web-research-in-managed-agents-more-accurate-faster-reliable
-2026-11-26.
+Link: https://ideas.gohighlevel.com/changelog/modifier-groups-set-how-many-options-guests-can-choose-founders-plan-exclusive
+2026-11-27.
 
-### ⏰ Introducing Meeting Triggers in Managed Agents!
-Automate meeting preparation and follow-ups with Managed Agents! 🚀 Managed Agents can now automatically execute tasks before a meeting starts or after it ends, helping you stay prepared and never miss an important follow-up. ✨ What's New? 📅 Meeting Starting Soon Trigger agents 5...
+### 💵 Introducing Cash on Delivery for Restaurants [Founder's Plan Exclusive]
+Guests can now order online and pay in person! 💵 Turn on Cash on Delivery for pickup, delivery or both. Guests choose it at checkout and pay at the counter or at the door. ✨ What's New? Manual payments in Restaurants: Turn Cash on Delivery (COD) and your own custom payment...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/introducing-meeting-triggers-in-managed-agents
-2026-11-25.
+Link: https://ideas.gohighlevel.com/changelog/introducing-cash-on-delivery-for-restaurants-founders-plan-exclusive
+2026-11-27.
 
-### Conversation AI now sleeps when your team replies from outside HighLevel
-When your team replies to a contact from outside HighLevel, for example from Meta Business Suite, the reply now puts your Conversation AI bot to sleep, the same as a reply sent from HighLevel. What's New Replies sent outside HighLevel now count. When a team member replies from...
+### 🎟️ Introducing Coupons for Restaurants: Online and at the Table [Founder's Plan Exclusive]
+Run promos that bring guests back! 🎟️ Guests can apply a coupon code at online checkout, and staff can apply the same code when they take payment at the table. Every code comes from Commerce → Coupons. ✨ What's New? Coupons at online checkout: Guests click Have a coupon code?...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/conversation-ai-now-sleeps-when-your-team-replies-from-outside-highlevel
-2026-11-25.
+Link: https://ideas.gohighlevel.com/changelog/introducing-coupons-for-restaurants-online-and-at-the-table-founders-plan-exclus
+2026-11-27.
 
-### 💬 Introducing Suggested Replies in Managed Agents Chat!
-Continue conversations faster with smart, AI-powered reply suggestions! 🚀 Managed Agents now automatically suggest relevant follow-up messages after each response, helping you take the next step without typing everything from scratch. ✨ What's New? 🤖 Smart Reply Suggestions Get...
+### 💳 Charge a Guest's Saved Card at the Table [Founder's Plan Exclusive]
+Settling a table just got faster! 💳 Take payment now charges cards right from the drawer. The guest's saved cards show up, with their default card already picked. ✨ What's New? Charge a card from Take payment: Open the table or its order, click Take payment, and Charge a card is...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/introducing-suggested-replies-in-managed-agents-chat
-2026-11-25.
+Link: https://ideas.gohighlevel.com/changelog/charge-a-guests-saved-card-at-the-table-founders-plan-exclusive
+2026-11-27.
 
-### Show all your events on one page in funnels and websites
-You no longer need to edit your website by hand every time you add an event. Events now has its own elements in the funnel and website builder, so a single page can list all your published events. One element, three pages. Search "Events" in the builder's Quick Add, drop it on a...
+### 🔐 Introducing Guest Checkout: Choose How Guests Sign In [Founder's Plan Exclusive]
+Fewer steps between a full cart and a placed order! 🛒 Restaurants now choose whether guests sign in when they order online or book a table: Never ask, Offer it or Require it. ✨ What's New? Never ask: Guests order and book without an account. Checkout only asks for their mobile...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/show-all-your-events-on-one-page-in-funnels-and-websites
-2026-11-25.
+Link: https://ideas.gohighlevel.com/changelog/introducing-guest-checkout-choose-how-guests-sign-in-founders-plan-exclusive
+2026-11-27.
 
-### Workflows: Populate Date-Time Contact Fields with Dynamic Values
-You can now populate Date-Time contact custom fields with dynamic values in Update Contact Field and Create Contact . Use timestamps, values from other date fields, or outputs from Format Date and Time instead of entering a fixed date and time. What’s improved? Choose Standard...
+### 🛎️ Introducing New Order: Staff Place Dine-in, Pickup and Delivery Orders [Founder's Plan Exclusive]
+Phone, counter and table orders now go straight into HighLevel! 🛎️ Restaurant Orders has a new New order button with Dine-in, Pickup and Delivery, so staff can place any order type from one screen. ✨ What's New? Dine-in: Pick a table, build the round with options and a kitchen...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/workflows-populate-date-time-contact-fields-with-dynamic-values
-2026-11-24.
+Link: https://ideas.gohighlevel.com/changelog/introducing-new-order-staff-place-dine-in-pickup-and-delivery-orders-founders-pl
+2026-11-27.
 
-### Custom Date Reminders: Access opportunity details natively, no Find Opportunity needed
-You can now use opportunity details directly in workflows triggered by a Custom Date Reminder on an opportunity date field. Use values such as {{opportunity.name}} without adding a Find Opportunity action to retrieve the opportunity that triggered the reminder. What’s improved?...
+### 🍰 Anything Else? Suggestions: Choose the Extras Guests See Before Checkout [Founder's Plan Exclusive]
+Turn every order into a bigger order! 🍰 Right before checkout, guests see a short list of extras. Now you choose what's on it, or let us pick for you. ✨ What's New? Your own heading: Write the title guests see, like "Something sweet to finish?" Choose how many: Show 1 to 8...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/custom-date-reminders-access-opportunity-details-natively-no-find-opportunity-ne
-2026-11-24.
+Link: https://ideas.gohighlevel.com/changelog/anything-else-suggestions-choose-the-extras-guests-see-before-checkout-founders
+2026-11-27.
 
-### Credential Analytics: See how your certificates and badges perform
-See which certificates and badges your members earn, download, and share, all from one new Analytics page under Credentials. 🎉 Until now you could issue certificates & badges but couldn't easily tell if anyone was using them. Credential Analytics fixes that. What's new?...
+### 💳 PayPal Now Works Everywhere in Restaurants [Founder's Plan Exclusive]
+Take cards, PayPal and Venmo everywhere your restaurant sells! 💳 Restaurants that use PayPal can now take card payments on their website and charge cards through PayPal in the CRM. ✨ What's New? Cards on your website: Guests pay for online orders and reservation deposits with...
 **What to do:** not tiered automatically. Open the link and check whether this changes anything live in your account before acting on it.
-Link: https://ideas.gohighlevel.com/changelog/credential-analytics-see-how-your-certificates-and-badges-perform
-2026-11-24.
+Link: https://ideas.gohighlevel.com/changelog/paypal-now-works-everywhere-in-restaurants-founders-plan-exclusive
+2026-11-27.
 
 ---
 
