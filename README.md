@@ -24,8 +24,11 @@ No credential, no connector, no expiry. It returns plain text to anything that c
 `.github/workflows/digest-refresh.yml` rewrites `digests/latest.md` on weekdays at 11:40 UTC
 (04:40 MST, 05:40 during daylight saving time) and on manual `workflow_dispatch`, which has a
 `dry_run` input that builds the file and shows the diff without committing. It reads HighLevel's
-public changelog feed and keeps the same layout as the hand-curated digest: title, `Fetched:`,
-`Covers entries dated`, a computed `Coverage gap:` line, tier counts, HIGH, MEDIUM and LOW
+public changelog feed, which holds only the newest 10 entries. When those 10 do not reach back to
+the previous digest's newest entry, it also pages the public `getEntries` endpoint behind the
+changelog page (no credential), merges the two sources and drops duplicates by link or guid. If
+`getEntries` fails, it uses the feed alone and prints the `Coverage gap:` line. The layout is the
+same as the hand-curated digest: title, `Fetched:`, `Covers entries dated`, a computed `Coverage gap:` line, tier counts, HIGH, MEDIUM and LOW
 sections, an UNTIERED section holding the automated entries, and the `Not shipped` section, which
 is carried forward unchanged from the previous file.
 
