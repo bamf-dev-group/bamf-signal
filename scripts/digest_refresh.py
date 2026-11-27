@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Rebuild digests/latest.md from HighLevel's public changelog feed.
+"""Rebuild digests/latest.md from HighLevel's public changelog.
 
-Standard library only. The only input is HighLevel's public text.
+Standard library only. The only inputs are HighLevel's public RSS feed, which holds the
+newest 10 entries, and the public getEntries endpoint behind the changelog page, which is
+paged back when the feed alone cannot reach the previous digest's newest entry.
 """
 import argparse
 import datetime as dt
 import email.utils
 import html
+import json
 import os
 import re
 import sys
@@ -15,6 +18,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 FEED_URL = "https://ideas.gohighlevel.com/api/changelog/feed.rss"
+ENTRIES_URL = "https://ideas.gohighlevel.com/api/changelog/getEntries"
+SITE_URL = "https://ideas.gohighlevel.com"
+MAX_ENTRY_PAGES = 20
 SOURCE_LABEL = "ideas.gohighlevel.com/changelog"
 SUMMARY_MAX = 280
 MAX_STALE_WEEKDAYS = 2
@@ -38,11 +44,14 @@ def shorten(text, limit=SUMMARY_MAX):
     return cut + "..."
 
 
-def parse_date(value):
-    """Return a UTC date from an RFC 2822 or ISO 8601 string, or None."""
-    if not value:
+def parse_datetime(value):
+    """Return a UTC datetime without sub-seconds from RFC 2822, ISO 8601 or epoch input, or None."""
+    if value is None or value == "":
         return None
-    value = value.strip()
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        seconds = value / 1000 if value > 1e11 else value
+        return dt.datetime.fromtimestamp(seconds, dt.timezone.utc).replace(microsecond=0)
+    value = str(value).strip()
     try:
         parsed = email.utils.parsedate_to_datetime(value)
     except (TypeError, ValueError):
@@ -52,9 +61,15 @@ def parse_date(value):
             parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             return None
-    if parsed.tzinfo is not None:
-        parsed = parsed.astimezone(dt.timezone.utc)
-    return parsed.date()
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc).replace(microsecond=0)
+
+
+def parse_date(value):
+    """Return a UTC date from an RFC 2822 or ISO 8601 string, or None."""
+    parsed = parse_datetime(value)
+    return parsed.date() if parsed else None
 
 
 def parse_rss(xml_text):
@@ -63,8 +78,8 @@ def parse_rss(xml_text):
     entries = []
     for item in root.iter("item"):
         title = clean_text(item.findtext("title"))
-        date = parse_date(item.findtext("pubDate"))
-        if not title or date is None:
+        published = parse_datetime(item.findtext("pubDate"))
+        if not title or published is None:
             continue
         summary = clean_text(item.findtext("description"))
         if not summary:
@@ -74,14 +89,84 @@ def parse_rss(xml_text):
                     break
         entries.append(
             {
-                "date": date,
+                "date": published.date(),
+                "published": published,
                 "title": title,
                 "link": (item.findtext("link") or item.findtext("guid") or "").strip(),
+                "guid": (item.findtext("guid") or "").strip(),
                 "summary": shorten(summary),
             }
         )
-    entries.sort(key=lambda e: e["date"], reverse=True)
+    entries.sort(key=lambda e: e["published"], reverse=True)
     return entries
+
+
+def first_present(entry, keys):
+    for key in keys:
+        if entry.get(key) not in (None, "", [], {}):
+            return entry[key]
+    return None
+
+
+def entry_from_api(raw):
+    """Convert one getEntries entry to the same shape parse_rss returns, or None if unusable."""
+    identifier = first_present(raw, ("id", "_id"))
+    title = clean_text(str(first_present(raw, ("title",)) or ""))
+    published = parse_datetime(first_present(raw, ("publishedAt", "published", "published_at", "created")))
+    slug = first_present(raw, ("url", "urlName", "slug"))
+    if not title or published is None or slug is None:
+        return None
+    slug = str(slug)
+    link = slug if slug.startswith("http") else f"{SITE_URL}/changelog/{slug.strip('/').split('/')[-1]}"
+    body = first_present(
+        raw,
+        ("plaintextDetails", "plaintext", "description", "html", "htmlDetails", "markdownDetails", "details"),
+    )
+    return {
+        "date": published.date(),
+        "published": published,
+        "title": title,
+        "link": link,
+        "guid": str(identifier) if identifier is not None else "",
+        "summary": shorten(clean_text(body if isinstance(body, str) else "")),
+    }
+
+
+def same_entry(a, b):
+    """True when two entries are the same item: shared link or guid, else same title and second."""
+    if a["link"] and a["link"] == b["link"]:
+        return True
+    if a["guid"] and a["guid"] == b["guid"]:
+        return True
+    return (
+        html.unescape(a["title"]).casefold() == html.unescape(b["title"]).casefold()
+        and a["published"] == b["published"]
+    )
+
+
+def merge_entries(primary, extra):
+    """Add entries from extra that are not already in primary, newest first.
+
+    A duplicate keeps the primary copy. When the two copies disagree on title or time,
+    a warning goes to stderr and the primary copy still wins.
+    """
+    merged = list(primary)
+    for entry in extra:
+        match = next((p for p in merged if same_entry(p, entry)), None)
+        if match is None:
+            merged.append(entry)
+        elif (
+            html.unescape(match["title"]) != html.unescape(entry["title"])
+            or match["published"] != entry["published"]
+        ):
+            print(
+                f"cross-check: sources disagree on {match['link'] or match['guid']}: "
+                f"{match['title']!r} {match['published'].isoformat()} vs "
+                f"{entry['title']!r} {entry['published'].isoformat()}",
+                file=sys.stderr,
+            )
+    merged.sort(key=lambda e: e["published"], reverse=True)
+    return merged
 
 
 def weekdays_between(start, end):
@@ -202,6 +287,16 @@ def http(url, timeout=30):
         return resp.read().decode("utf-8", errors="replace")
 
 
+def http_post(url, payload, timeout=30):
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", errors="replace")
+
+
 def fetch_feed(retries=1, delay=10):
     last = None
     for attempt in range(retries + 1):
@@ -218,6 +313,55 @@ def fetch_feed(retries=1, delay=10):
     raise RuntimeError(f"feed fetch failed after retry: {last}")
 
 
+def fetch_api_entries(since, retries=1, delay=5, max_pages=MAX_ENTRY_PAGES):
+    """Page getEntries until an entry dated before `since` appears or there is no next page.
+
+    Works whether the endpoint returns the first N pages together or only page N, because
+    the caller de-duplicates. Raises RuntimeError when a page cannot be fetched or parsed.
+    """
+    collected = []
+    for pages in range(1, max_pages + 1):
+        payload = json.dumps({"pages": pages, "status": ["published"]}).encode("utf-8")
+        last = None
+        for attempt in range(retries + 1):
+            try:
+                result = json.loads(http_post(ENTRIES_URL, payload))["result"]
+                raw_entries, has_next = result["entries"], bool(result.get("hasNextPage"))
+                if not isinstance(raw_entries, list):
+                    raise ValueError("entries is not a list")
+                break
+            except Exception as exc:
+                last = exc
+                print(f"getEntries pages={pages} attempt {attempt + 1} failed: {exc}", file=sys.stderr)
+                if attempt < retries:
+                    time.sleep(delay)
+        else:
+            raise RuntimeError(f"getEntries failed after retry: {last}")
+        entries = [e for e in (entry_from_api(r) for r in raw_entries if isinstance(r, dict)) if e]
+        if pages == 1 and not entries:
+            raise RuntimeError("getEntries returned no usable entries")
+        collected = merge_entries(collected, entries)
+        if not has_next or not entries or min(e["date"] for e in entries) < since:
+            break
+    return collected
+
+
+def collect_entries(rss_entries, prev_newest, fetch_api=fetch_api_entries):
+    """Combine the RSS items with getEntries items so the set reaches the previous digest.
+
+    getEntries is only called when RSS alone does not reach prev_newest. If it fails, the RSS
+    items are returned unchanged and the coverage gap line reports what is missing.
+    """
+    if prev_newest is None or rss_entries[-1]["date"] <= prev_newest:
+        return rss_entries
+    try:
+        api_entries = fetch_api(prev_newest)
+    except Exception as exc:
+        print(f"getEntries unavailable, using the RSS feed only: {exc}", file=sys.stderr)
+        return rss_entries
+    return merge_entries(rss_entries, [e for e in api_entries if e["date"] >= prev_newest])
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default="digests/latest.md")
@@ -225,24 +369,24 @@ def main(argv=None):
     parser.add_argument("--now", help="override the current UTC time, ISO 8601 (for tests)")
     args = parser.parse_args(argv)
 
+    previous = ""
+    if os.path.exists(args.output):
+        with open(args.output, encoding="utf-8") as fh:
+            previous = fh.read()
+
     if args.feed_file:
         with open(args.feed_file, encoding="utf-8") as fh:
             entries = parse_rss(fh.read())
         if not entries:
             raise SystemExit("feed contained no usable entries")
     else:
-        entries = fetch_feed()
+        entries = collect_entries(fetch_feed(), previous_newest(previous))
 
     if args.now:
         now = dt.datetime.fromisoformat(args.now.replace("Z", "+00:00"))
     else:
         now = dt.datetime.now(dt.timezone.utc)
     now = now.replace(microsecond=0)
-
-    previous = ""
-    if os.path.exists(args.output):
-        with open(args.output, encoding="utf-8") as fh:
-            previous = fh.read()
 
     stale = is_stale(entries, now.date())
     with open(args.output, "w", encoding="utf-8") as fh:

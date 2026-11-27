@@ -1,9 +1,14 @@
 import datetime as dt
+import io
+import json
 import os
 import pathlib
 import sys
 import tempfile
 import unittest
+import urllib.error
+from contextlib import redirect_stderr
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -160,6 +165,222 @@ class MainTests(unittest.TestCase):
         self.assertIn("Fetched: 2026-11-26T11:40:05Z", text)
         self.assertIn("stale=true", outputs)
         self.assertIn("newest=2026-11-19", outputs)
+
+
+def rss_item(title, link, stamp, guid=None):
+    guid_xml = f"<guid isPermaLink=\"false\">{guid}</guid>" if guid else ""
+    return (
+        f"<item><title>{title}</title><link>{link}</link>{guid_xml}"
+        f"<pubDate>{stamp}</pubDate><description>Body of {link}</description></item>"
+    )
+
+
+def rss_feed(items):
+    return f"<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>{''.join(items)}</channel></rss>"
+
+
+def api_entry(n, published, title=None, url=None):
+    return {
+        "id": f"id{n}",
+        "title": title or f"Entry {n}",
+        "publishedAt": published,
+        "url": url or f"entry-{n}",
+        "plaintextDetails": f"Body of entry {n}",
+    }
+
+
+class FakeEntriesApi:
+    """getEntries stand-in: page size 10, and `pages` returns the first N pages together."""
+
+    def __init__(self, entries, page_size=10):
+        self.entries = entries
+        self.page_size = page_size
+        self.calls = []
+
+    def __call__(self, url, payload, timeout=30):
+        body = json.loads(payload)
+        self.calls.append(body)
+        count = body["pages"] * self.page_size
+        shown = self.entries[:count]
+        return json.dumps({"result": {"entries": shown, "hasNextPage": count < len(self.entries)}})
+
+
+PREV_DIGEST = (
+    "# HighLevel digest, 2026-11-26\n\n"
+    "Covers entries dated 2026-11-24 through 2026-11-26. Source: x.\n\n"
+    "## Not shipped, in case you heard otherwise\n\nNothing recorded in this sweep.\n"
+)
+BUSY_NOW = "2026-11-27T20:15:30Z"
+
+
+def busy_day_entries():
+    """12 entries on 2026-11-27 (newest first), then two on 11-26 and two on 11-25."""
+    entries = []
+    for n in range(12):
+        entries.append(api_entry(n, f"2026-11-27T{20 - n:02d}:00:00.123Z"))
+    entries.append(api_entry(12, "2026-11-26T15:00:00Z"))
+    entries.append(api_entry(13, "2026-11-26T09:00:00Z"))
+    entries.append(api_entry(14, "2026-11-25T15:00:00Z"))
+    entries.append(api_entry(15, "2026-11-25T09:00:00Z"))
+    return entries
+
+
+def busy_day_rss(entries, count=10):
+    return rss_feed(
+        rss_item(
+            e["title"],
+            f"https://ideas.gohighlevel.com/changelog/{e['url']}",
+            dr.parse_datetime(e["publishedAt"]).strftime("%a, %d %b %Y %H:%M:%S GMT"),
+            guid=e["id"],
+        )
+        for e in entries[:count]
+    )
+
+
+class GetEntriesTests(unittest.TestCase):
+    def run_main(self, rss_text, api, previous=PREV_DIGEST, now=BUSY_NOW):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp) / "latest.md"
+            out.write_text(previous, encoding="utf-8")
+            stderr = io.StringIO()
+            with mock.patch.object(dr, "http", return_value=rss_text), mock.patch.object(
+                dr, "http_post", api
+            ), mock.patch.object(dr.time, "sleep"), redirect_stderr(stderr):
+                dr.main(["--output", str(out), "--now", now])
+            return out.read_text(encoding="utf-8"), stderr.getvalue()
+
+    def test_busy_day_over_ten_entries_closes_the_gap(self):
+        entries = busy_day_entries()
+        api = FakeEntriesApi(entries)
+        text, _ = self.run_main(busy_day_rss(entries), api)
+        self.assertIn("Coverage gap: none detected.", text)
+        self.assertNotIn("is newer than the previous", text)
+        for n in range(12):
+            self.assertEqual(text.count(f"### Entry {n}\n"), 1, n)
+        self.assertIn("### Entry 12\n", text)
+        self.assertIn("### Entry 13\n", text)
+        self.assertNotIn("### Entry 14\n", text)
+        self.assertIn("0 HIGH, 0 MEDIUM, 0 LOW, 14 UNTIERED.", text)
+        self.assertIn("Covers entries dated 2026-11-26 through 2026-11-27.", text)
+        self.assertEqual([c["pages"] for c in api.calls], [1, 2])
+        self.assertIn("Link: https://ideas.gohighlevel.com/changelog/entry-11", text)
+        self.assertLess(text.index("### Entry 0\n"), text.index("### Entry 11\n"))
+
+    def test_getentries_failure_falls_back_to_rss_and_prints_gap(self):
+        entries = busy_day_entries()
+
+        def broken(url, payload, timeout=30):
+            raise urllib.error.URLError("blocked")
+
+        text, err = self.run_main(busy_day_rss(entries), broken)
+        self.assertIn("getEntries unavailable, using the RSS feed only", err)
+        self.assertIn(
+            "Coverage gap: the feed's oldest entry (2026-11-27) is newer than the previous "
+            "digest's newest entry (2026-11-26)",
+            text,
+        )
+        self.assertIn("0 HIGH, 0 MEDIUM, 0 LOW, 10 UNTIERED.", text)
+
+    def test_getentries_bad_reply_falls_back_to_rss(self):
+        entries = busy_day_entries()
+        for reply in ("not json", json.dumps({"result": {}}), json.dumps({"result": {"entries": []}})):
+            text, err = self.run_main(busy_day_rss(entries), lambda url, payload, timeout=30, r=reply: r)
+            self.assertIn("using the RSS feed only", err)
+            self.assertIn("Coverage gap: the feed's oldest entry", text)
+
+    def test_gap_line_stays_when_combined_set_still_short(self):
+        entries = busy_day_entries()[:14]
+        api = FakeEntriesApi(entries)
+        text, _ = self.run_main(busy_day_rss(entries), api, previous=PREV_DIGEST.replace("2026-11-26.", "2026-11-24."))
+        self.assertIn("Coverage gap: the feed's oldest entry (2026-11-26)", text)
+        self.assertIn("previous digest's newest entry (2026-11-24)", text)
+
+    def test_rss_that_already_reaches_previous_skips_getentries(self):
+        entries = busy_day_entries()[10:]
+        api = FakeEntriesApi(entries)
+        text, _ = self.run_main(busy_day_rss(entries, count=4), api)
+        self.assertEqual(api.calls, [])
+        self.assertIn("Coverage gap: none detected.", text)
+
+    def test_dedupe_across_both_sources(self):
+        rss_entries = [
+            dr.parse_rss(
+                rss_feed(
+                    [
+                        rss_item(
+                            "Same link",
+                            "https://ideas.gohighlevel.com/changelog/same-link",
+                            "Fri, 27 Nov 2026 10:00:00 GMT",
+                        ),
+                        rss_item(
+                            "Same guid",
+                            "https://ideas.gohighlevel.com/changelog/same-guid",
+                            "Fri, 27 Nov 2026 09:00:00 GMT",
+                            guid="guid-2",
+                        ),
+                        rss_item(
+                            "Fish &amp;amp; Chips",
+                            "https://ideas.gohighlevel.com/changelog/old-slug",
+                            "Fri, 27 Nov 2026 08:00:00 GMT",
+                        ),
+                    ]
+                )
+            )
+        ][0]
+        api_entries = dr.merge_entries(
+            [],
+            [
+                dr.entry_from_api(
+                    {"id": "a", "title": "Same link", "publishedAt": "2026-11-27T10:00:00.900Z", "url": "same-link"}
+                ),
+                dr.entry_from_api(
+                    {"id": "guid-2", "title": "Same guid", "publishedAt": "2026-11-27T09:00:00Z", "url": "renamed"}
+                ),
+                dr.entry_from_api(
+                    {"id": "c", "title": "Fish & Chips", "publishedAt": "2026-11-27T08:00:00.450Z", "url": "new-slug"}
+                ),
+                dr.entry_from_api(
+                    {"id": "d", "title": "Only in API", "publishedAt": "2026-11-26T08:00:00Z", "url": "api-only"}
+                ),
+            ],
+        )
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            merged = dr.merge_entries(rss_entries, api_entries)
+        self.assertEqual(
+            [e["title"] for e in merged], ["Same link", "Same guid", "Fish & Chips", "Only in API"]
+        )
+        self.assertEqual(sum(e["link"].endswith("/same-link") for e in merged), 1)
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_dedupe_end_to_end_overlapping_sources(self):
+        entries = busy_day_entries()
+        text, _ = self.run_main(busy_day_rss(entries), FakeEntriesApi(entries))
+        titles = [l for l in text.splitlines() if l.startswith("### ")]
+        self.assertEqual(len(titles), len(set(titles)))
+        self.assertEqual(len(titles), 14)
+
+    def test_disagreement_between_sources_is_warned_and_rss_wins(self):
+        rss = dr.parse_rss(
+            rss_feed([rss_item("Title A", "https://ideas.gohighlevel.com/changelog/x", "Fri, 27 Nov 2026 10:00:00 GMT")])
+        )
+        api = [dr.entry_from_api({"id": "1", "title": "Title B", "publishedAt": "2026-11-27T10:00:05Z", "url": "x"})]
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            merged = dr.merge_entries(rss, api)
+        self.assertEqual([e["title"] for e in merged], ["Title A"])
+        self.assertIn("cross-check: sources disagree", stderr.getvalue())
+
+    def test_sub_seconds_are_dropped(self):
+        parsed = dr.parse_datetime("2026-11-27T10:00:00.987Z")
+        self.assertEqual(parsed, dt.datetime(2026, 11, 27, 10, 0, 0, tzinfo=dt.timezone.utc))
+        self.assertEqual(
+            dr.parse_datetime(1795773600123), dt.datetime(2026, 11, 27, 10, 0, 0, tzinfo=dt.timezone.utc)
+        )
+
+    def test_api_titles_are_unescaped(self):
+        entry = dr.entry_from_api({"id": "1", "title": "A &amp; B", "publishedAt": "2026-11-27T10:00:00Z", "url": "a"})
+        self.assertEqual(entry["title"], "A & B")
 
 
 class FreshnessTests(unittest.TestCase):
