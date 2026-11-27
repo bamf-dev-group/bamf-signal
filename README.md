@@ -22,7 +22,8 @@ No credential, no connector, no expiry. It returns plain text to anything that c
 ## Automated refresh
 
 `.github/workflows/digest-refresh.yml` rewrites `digests/latest.md` on weekdays at 11:40 UTC
-(04:40 MST, 05:40 during daylight saving time) and on manual `workflow_dispatch`, which has a
+(04:40 MST, 05:40 during daylight saving time), again at 17:40 UTC as a backup for a late or
+dropped GitHub schedule run, and on manual `workflow_dispatch`, which has a
 `dry_run` input that builds the file and shows the diff without committing. It reads HighLevel's
 public changelog feed, which holds only the newest 10 entries. When those 10 do not reach back to
 the previous digest's newest entry, it also pages the public `getEntries` endpoint behind the
@@ -33,7 +34,9 @@ sections, an UNTIERED section holding the automated entries, and the `Not shippe
 is carried forward unchanged from the previous file.
 
 It commits with the built-in `GITHUB_TOKEN` even when nothing is new, because the `Fetched:` line
-changes. If the newest entry is more than 2 weekdays old, the title keeps the newest entry date
+changes, with one exception: a rerun on the same UTC day whose content is identical leaves the file
+alone, so the backup slot never adds a second commit. A rerun also never shrinks the digest or
+hides a coverage gap the earlier run reported. If the newest entry is more than 2 weekdays old, the title keeps the newest entry date
 instead of today, a `STALE:` line is added, and the job fails. Any failure opens or updates an
 issue titled "digest-refresh failure", which is closed on the next good run.
 

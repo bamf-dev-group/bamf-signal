@@ -196,6 +196,9 @@ NOT_SHIPPED_DEFAULT = (
 )
 NOT_SHIPPED_RE = re.compile(r"^## Not shipped.*\Z", re.M | re.S)
 COVERS_ISO_RE = re.compile(r"Covers entries dated \d{4}-\d{2}-\d{2} through (\d{4}-\d{2}-\d{2})")
+COVERS_FROM_RE = re.compile(r"Covers entries dated (\d{4}-\d{2}-\d{2}) through \d{4}-\d{2}-\d{2}")
+FETCHED_RE = re.compile(r"^Fetched: (\S+)\s*$", re.M)
+OPEN_GAP_RE = re.compile(r"^Coverage gap: the feed's oldest entry .*previous digest's newest entry \((\d{4}-\d{2}-\d{2})\)", re.M)
 COVERS_LEGACY_RE = re.compile(r"Covers entries dated .*? through ([A-Z][a-z]{2}) (\d{1,2}) (\d{4})")
 WHAT_TO_DO = (
     "**What to do:** not tiered automatically. Open the link and check whether this changes "
@@ -215,6 +218,37 @@ def previous_newest(text):
         except ValueError:
             return None
     return None
+
+
+def previous_fetched_date(text):
+    """UTC date of the previous digest's Fetched line, or None."""
+    match = FETCHED_RE.search(text or "")
+    parsed = parse_datetime(match.group(1)) if match else None
+    return parsed.date() if parsed else None
+
+
+def coverage_baseline(text, today):
+    """Date the new entry set must reach back to.
+
+    Normally the previous digest's newest entry. When the previous digest was fetched earlier
+    the same UTC day, a rerun must not shrink that digest or hide a gap it reported: an open
+    gap keeps its original date, otherwise the rerun reaches back to the date the previous
+    digest already covered from.
+    """
+    newest = previous_newest(text)
+    if previous_fetched_date(text) != today:
+        return newest
+    gap = OPEN_GAP_RE.search(text or "")
+    if gap:
+        return dt.date.fromisoformat(gap.group(1))
+    covers = COVERS_FROM_RE.search(text or "")
+    if covers:
+        return dt.date.fromisoformat(covers.group(1))
+    return newest
+
+
+def without_fetched(text):
+    return FETCHED_RE.sub("Fetched: -", text or "")
 
 
 def extract_not_shipped(text):
@@ -259,7 +293,7 @@ def render(entries, now, previous_text="", stale=None):
             "",
         ]
     lines += [
-        coverage_gap_line(entries, previous_newest(previous_text)),
+        coverage_gap_line(entries, coverage_baseline(previous_text, today)),
         "",
         f"0 HIGH, 0 MEDIUM, 0 LOW, {len(entries)} UNTIERED.",
         "",
@@ -343,6 +377,10 @@ def fetch_api_entries(since, retries=1, delay=5, max_pages=MAX_ENTRY_PAGES):
         collected = merge_entries(collected, entries)
         if not has_next or not entries or min(e["date"] for e in entries) < since:
             break
+    print(
+        f"getEntries: read {pages} page(s), {len(collected)} entries, "
+        f"oldest {fmt_day(min(e['date'] for e in collected))}, target {fmt_day(since)}"
+    )
     return collected
 
 
@@ -374,26 +412,31 @@ def main(argv=None):
         with open(args.output, encoding="utf-8") as fh:
             previous = fh.read()
 
-    if args.feed_file:
-        with open(args.feed_file, encoding="utf-8") as fh:
-            entries = parse_rss(fh.read())
-        if not entries:
-            raise SystemExit("feed contained no usable entries")
-    else:
-        entries = collect_entries(fetch_feed(), previous_newest(previous))
-
     if args.now:
         now = dt.datetime.fromisoformat(args.now.replace("Z", "+00:00"))
     else:
         now = dt.datetime.now(dt.timezone.utc)
     now = now.replace(microsecond=0)
 
-    stale = is_stale(entries, now.date())
-    with open(args.output, "w", encoding="utf-8") as fh:
-        fh.write(render(entries, now, previous, stale))
+    if args.feed_file:
+        with open(args.feed_file, encoding="utf-8") as fh:
+            entries = parse_rss(fh.read())
+        if not entries:
+            raise SystemExit("feed contained no usable entries")
+    else:
+        entries = collect_entries(fetch_feed(), coverage_baseline(previous, now.date()))
 
+    stale = is_stale(entries, now.date())
+    text = render(entries, now, previous, stale)
     newest = fmt_day(entries[0]["date"])
-    print(f"wrote {args.output}: {len(entries)} entries, newest {newest}, stale={stale}")
+    gap = next(l for l in text.splitlines() if l.startswith("Coverage gap:"))
+    if previous and without_fetched(text) == without_fetched(previous) and previous_fetched_date(previous) == now.date():
+        print(f"unchanged: {args.output} already built today with the same content, left as is")
+    else:
+        with open(args.output, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        print(f"wrote {args.output}: {len(entries)} entries, newest {newest}, stale={stale}")
+    print(gap)
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
         with open(out, "a", encoding="utf-8") as fh:
